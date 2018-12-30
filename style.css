@@ -1,0 +1,37 @@
+#top {
+    background-color: #EEE;
+    border-bottom: 2px solid #CCC;
+}
+
+#logo {
+    font-size: 225%;
+    font-variant: small-caps;
+    font-weight: 600;
+}
+
+#deezer {
+    font-size: 85%;
+    font-weight: 500;
+}
+
+#deezer-logo {
+    height: 4ex;
+}
+
+#tracks {
+    width: 100%;
+}
+
+#tracks img {
+    width: 8ex;
+    height: 8ex;
+}
+
+#tracks tr td:first-child {
+    padding: 0;
+    width: 8ex;
+}
+
+#tracks .title {
+    font-weight: 600;
+}
