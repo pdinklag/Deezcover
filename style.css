@@ -35,3 +35,9 @@
 #tracks .title {
     font-weight: 600;
 }
+
+#footer {
+    border-top: 1px solid #CCC;
+    font-size: 75%;
+    font-style: italic;
+}
