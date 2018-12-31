@@ -1,22 +1,26 @@
 app = {
     // not every ID is being used, so these are guesses
+    // it may take an actual while (up to 300 attempts seems common) to hit
     minTrackId: 100000,
     maxTrackId: 6100000000,
-    maxAttempts: 1000, // don't want stack overflows
+
+    // within this range, we will find something more quickly
+    quickMinTrackId: 700001,
+    quickMaxTrackId: 19999999,
+
+    maxAttempts: 1000, // don't want stack overflows, but this should suffice
     waiting: false,
 
     engine: Random.engines.mt19937(),
     init: false,
 
-    randomTrackId: function() {
+    randomTrackId: function(min = this.minTrackId, max = this.maxTrackId) {
         if(!this.init) {
             this.engine.autoSeed();
             this.init = true;
         }
 
-        return Random.integer(this.minTrackId, this.maxTrackId)(this.engine);
-        /*return Math.floor(Math.random() * ( - ))
-            + this.minTrackId;*/
+        return Random.integer(min, max)(this.engine);
     },
 
     tracks: $('#tracks'),
@@ -36,50 +40,97 @@ app = {
         }
     },
 
-    attempt: function(num) {
-        this.wait(true);
+    queue: [],
+    outstanding: 0,
 
-        var id = this.randomTrackId();
+    enqueue: function(track) {
+        if(this.waiting) {
+            // don't queue up, display immediately!
+            this.wait(false);
+            this.display(track);
+            ++this.outstanding; // and make sure to request another one!
+        } else {
+            // add to queue
+            this.queue.push(track);
+        }
+
+        if(--this.outstanding > 0) {
+            this.requestRandomTrack();
+        }
+    },
+
+    displayNext: function() {
+        if(this.queue.length > 0) {
+            // display next from queue
+            this.display(this.queue.shift());
+
+            // and request the next one!
+            this.addRequest();
+        } else {
+            // we are behind, but there should be a request already!
+            this.wait(true);
+        }
+    },
+
+    addRequest: function() {
+        if(this.outstanding > 0) {
+            // we are already loading one, settle down and add outstanding request
+            ++this.outstanding;
+            console.log("outstanding request count now " + this.outstanding);
+        } else {
+            this.outstanding = 1;
+            this.requestRandomTrack();
+        }
+    },
+
+    requestRandomTrack: function(min = this.minTrackId, max = this.maxTrackId, attempt = 1) {
+        var id = this.randomTrackId(min, max);
         var _app = this;
         $.getJSON('r.php?id=' + id, function(track) {
             if(track.readable) {
                 // this track is OK
-                _app.tracks.append(`
-                    <tr>
-                        <td>
-                        <a href="${track.link}" title="Open on Deezer">
-                        <img src="${track.album.cover_medium}"/
-                        ></a></td>
-                        <td class="text-left p-2">
-                            <div class="title">${track.artist.name} &ndash; ${track.title}</div>
-                        </td>
-                        <td>
-                            <audio controls class="align-middle float-right">
-                            <source src="${track.preview}" type="audio/mpeg">
-                            </audio>
-                        </td>
-                    </tr>
-                `);
+                _app.enqueue(track);
                 _app.wait(false);
-                console.log('Deezcover: needed ' + num + ' attempts!');
+                console.log('Deezcover: needed ' + attempt + ' attempts!');
             } else {
                 // that failed - try again?
-                if(num < _app.maxAttempts) {
-                    _app.attempt(num+1);
+                if(attempt < _app.maxAttempts) {
+                    _app.requestRandomTrack(min, max, attempt + 1);
                 } else {
                     // TODO: display message on site?
-                    console.log('Deezcover: getting a new track failed after ' + num + ' attempts!');
+                    console.log('Deezcover: getting a new track failed after ' + attempt + ' attempts!');
                     _app.wait(false);
                 }
             }
         });
     },
+
+    display: function(track) {
+        this.tracks.append(`
+            <tr>
+                <td>
+                <a href="${track.link}" title="Open on Deezer">
+                <img src="${track.album.cover_medium}"/
+                ></a></td>
+                <td class="text-left p-2">
+                    <div class="title">${track.artist.name} &ndash; ${track.title}</div>
+                </td>
+                <td>
+                    <audio controls class="align-middle float-right">
+                    <source src="${track.preview}" type="audio/mpeg">
+                    </audio>
+                </td>
+            </tr>
+        `);
+    },
 };
 
 // attempt to get one on button click
 app.btn.click(function() {
-    app.attempt(1);
+    app.displayNext();
 });
 
-// ... and also on startup!
-app.attempt(1);
+// Startup
+app.wait(true);
+app.requestRandomTrack(app.quickMinTrackId, app.quickMaxTrackId);
+app.outstanding = 10; // pre-load a few!
