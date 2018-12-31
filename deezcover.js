@@ -40,6 +40,8 @@ app = {
         }
     },
 
+    chkStream: $('#stream'),
+    stream: false,
     queue: [],
     outstanding: 0,
 
@@ -106,6 +108,8 @@ app = {
     },
 
     display: function(track) {
+        autoplay = this.stream ? 'autoplay' : '';
+
         this.tracks.append(`
             <tr>
                 <td>
@@ -116,18 +120,31 @@ app = {
                     <div class="title">${track.artist.name} &ndash; ${track.title}</div>
                 </td>
                 <td>
-                    <audio controls class="align-middle float-right">
+                    <audio controls ${autoplay} class="align-middle float-right">
                     <source src="${track.preview}" type="audio/mpeg">
                     </audio>
                 </td>
             </tr>
         `);
+
+        if(this.stream) {
+            var audio = $('#tracks audio').last();
+
+            _app = this;
+            audio.on('ended', function() {
+                _app.displayNext();
+            });
+        }
     },
 };
 
 // attempt to get one on button click
 app.btn.click(function() {
     app.displayNext();
+});
+
+app.chkStream.change(function() {
+    app.stream = app.chkStream.prop('checked');
 });
 
 // Startup
